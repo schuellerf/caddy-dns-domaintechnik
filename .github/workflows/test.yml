@@ -1,0 +1,43 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout libdns module
+        uses: actions/checkout@v4
+        with:
+          repository: schuellerf/libdns-domaintechnik
+          path: libdns-src
+          token: ${{ secrets.GH_PAT }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Point module at checked-out libdns
+        run: go mod edit -replace github.com/schuellerf/libdns-domaintechnik=./libdns-src
+      - name: Test
+        run: go test ./...
+      - name: Compile Caddy with xcaddy
+        run: |
+          go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+          xcaddy build \
+            --with github.com/schuellerf/caddy-dns-domaintechnik=. \
+            --with github.com/schuellerf/libdns-domaintechnik=./libdns-src
+          ./caddy list-modules | grep -F dns.providers.domaintechnik
+          cat > Caddyfile.validate <<'EOF'
+          {
+          	acme_dns domaintechnik dummy-token
+          }
+          :80 {
+          	respond "ok"
+          }
+          EOF
+          ./caddy validate --config Caddyfile.validate

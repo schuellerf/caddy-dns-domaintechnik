@@ -14,21 +14,62 @@ dns.providers.domaintechnik
 
 ## Building Caddy
 
-Once both repos are on GitHub, build with xcaddy from the module path:
-
 ```bash
 xcaddy build --with github.com/schuellerf/caddy-dns-domaintechnik
 ```
 
-Go will pull [`github.com/schuellerf/libdns-domaintechnik`](https://github.com/schuellerf/libdns-domaintechnik) as a dependency. Publish the libdns repo first (or in the same step), or xcaddy cannot resolve it.
-
-From local checkouts before push:
+If the libdns module is not tagged yet, also pass it explicitly:
 
 ```bash
 xcaddy build \
-  --with github.com/schuellerf/caddy-dns-domaintechnik=/path/to/domaintechnik/caddy-dns \
-  --with github.com/schuellerf/libdns-domaintechnik=/path/to/domaintechnik/libdns
+  --with github.com/schuellerf/caddy-dns-domaintechnik \
+  --with github.com/schuellerf/libdns-domaintechnik
 ```
+
+From local checkouts:
+
+```bash
+xcaddy build \
+  --with github.com/schuellerf/caddy-dns-domaintechnik=/path/to/caddy-dns \
+  --with github.com/schuellerf/libdns-domaintechnik=/path/to/libdns
+```
+
+## Testing without creating a DNS record
+
+None of these talk to Domaintechnik’s `acme.present` / `acme.cleanup` endpoints. They do not issue a certificate.
+
+1. **Unit tests** (httptest mock API):
+
+   ```bash
+   go test ./...                    # in libdns-domaintechnik
+   go test ./...                    # in caddy-dns-domaintechnik
+   ```
+
+2. **Compile Caddy with the plugin** (xcaddy “dry-run”):
+
+   ```bash
+   xcaddy build --with github.com/schuellerf/caddy-dns-domaintechnik
+   ./caddy list-modules | grep domaintechnik
+   # expect: dns.providers.domaintechnik
+   ```
+
+3. **Validate a Caddyfile** (loads the module, no ACME client):
+
+   ```bash
+   cat > /tmp/Caddyfile <<'EOF'
+   {
+   	acme_dns domaintechnik dummy-token
+   }
+   :80 {
+   	respond "ok"
+   }
+   EOF
+   ./caddy validate --config /tmp/Caddyfile
+   ```
+
+   `caddy run` is what starts certificate issuance and would create `_acme-challenge` records. Skip that until you want a real cert.
+
+Optional live check that still **does not** change DNS: Domaintechnik `ping` (curl or `Provider.Ping`). That only verifies the bearer token.
 
 ## Token
 
