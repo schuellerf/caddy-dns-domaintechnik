@@ -14,24 +14,13 @@ dns.providers.domaintechnik
 
 ## Building Caddy
 
+You might need to install xcaddy first:
+```bash
+go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+```
+
 ```bash
 xcaddy build --with github.com/schuellerf/caddy-dns-domaintechnik
-```
-
-If the libdns module is not tagged yet, also pass it explicitly:
-
-```bash
-xcaddy build \
-  --with github.com/schuellerf/caddy-dns-domaintechnik \
-  --with github.com/schuellerf/libdns-domaintechnik
-```
-
-From local checkouts:
-
-```bash
-xcaddy build \
-  --with github.com/schuellerf/caddy-dns-domaintechnik=/path/to/caddy-dns \
-  --with github.com/schuellerf/libdns-domaintechnik=/path/to/libdns
 ```
 
 ## Testing without creating a DNS record
@@ -83,45 +72,28 @@ Caddy only reads a string from config. Prefer an environment variable on the **C
 
 ## Caddyfile
 
-Global:
+Global options (no hostname on this block; it applies to every site):
 
 ```
 {
 	acme_dns domaintechnik {env.DT_TOKEN}
 }
-```
 
-Per site:
-
-```
-tls {
-	dns domaintechnik {env.DT_TOKEN}
+example.com, *.example.com {
+	reverse_proxy localhost:8080
 }
 ```
 
-Block form (optional custom API base URL):
+Per site (hostname in front of the site block, not in front of `tls`):
 
 ```
-tls {
-	dns domaintechnik {
-		api_token {env.DT_TOKEN}
-		api_endpoint https://manage.domaintechnik.at/dns-api/v1
+example.com, *.example.com {
+	tls {
+		dns domaintechnik {env.DT_TOKEN}
 	}
+	reverse_proxy localhost:8080
 }
 ```
 
-## JSON
-
-```json
-{
-	"module": "acme",
-	"challenges": {
-		"dns": {
-			"provider": {
-				"name": "domaintechnik",
-				"api_token": "{env.DT_TOKEN}"
-			}
-		}
-	}
-}
-```
+You could set the `DT_TOKEN` environment variable in the systemd service file or
+just replace `{env.DT_TOKEN}` with the actual token.
