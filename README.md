@@ -23,6 +23,17 @@ go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 xcaddy build --with github.com/schuellerf/caddy-dns-domaintechnik
 ```
 
+That only produces `./caddy`. Install the official [Caddy Debian package](https://caddyserver.com/docs/install#debian-ubuntu-raspbian) first for `caddy.service` and `/etc/caddy`, then replace the packaged binary with your build ([custom-build notes](https://caddyserver.com/docs/build#package-support-files-for-custom-builds-for-debianubunturaspbian)):
+
+```bash
+sudo dpkg-divert --divert /usr/bin/caddy.default --rename /usr/bin/caddy
+sudo mv ./caddy /usr/bin/caddy.custom
+sudo update-alternatives --install /usr/bin/caddy caddy /usr/bin/caddy.default 10
+sudo update-alternatives --install /usr/bin/caddy caddy /usr/bin/caddy.custom 50
+sudo systemctl restart caddy
+caddy list-modules | grep domaintechnik
+```
+
 ## Testing without creating a DNS record
 
 None of these talk to Domaintechnik’s `acme.present` / `acme.cleanup` endpoints. They do not issue a certificate.
